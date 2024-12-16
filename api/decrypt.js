@@ -4,9 +4,12 @@ import dotenv from 'dotenv'
 // Load environment variables
 dotenv.config()
 
-const { AES_KEY } = process.env
+// const { AES_KEY } = process.env
 // Do not forget trailing space
-const { PREFIX } = process.env
+// const { PREFIX } = process.env
+// const prefixWithSpace = PREFIX + ' '
+const AES_KEY = 'ScholarsBureau(created-by-www.scholarsbureau.com)iLFB0yJSdidhLStH6tNcfXMqo7L8qkdofk'
+const PREFIX = 'ScholarsBureau(created-by-www.scholarsbureau.com)'
 const prefixWithSpace = PREFIX + ' '
 
 
