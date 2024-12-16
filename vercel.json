@@ -1,0 +1,54 @@
+{
+  "version": 2,
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET,POST,PUT,DELETE,OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type,Authorization"
+        }
+      ]
+    }
+  ],
+  "builds": [
+    {
+      "src": "api/**/*.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/api/home.js"
+    },
+    {
+      "source": "/api/hello",
+      "destination": "/api/hello.js"
+    },
+    {
+      "source": "/api/insert-service",
+      "destination": "/api/insert-service.js"
+    },
+    {
+      "source": "/api/retrieve-services",
+      "destination": "/api/retrieve-services.js"
+    },
+    {
+      "source": "/api/update-token",
+      "destination": "/api/update-token.js"
+    },
+    {
+      "source": "/api/send-verification-codes",
+      "destination": "/api/send-verification-codes.js"
+    }
+  ]
+}

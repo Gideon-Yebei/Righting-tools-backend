@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="JavaScriptLibraryMappings">
+    <file url="file://$PROJECT_DIR$" libraries="{vercelbackend/node_modules}" />
+    <file url="PROJECT" libraries="{@types/chrome, @types/chrome-apps, font-awesome, nprogress, vercelbackend/node_modules}" />
+    <includedPredefinedLibrary name="HTTP Pre-Request and Response Handler" />
+  </component>
+</project>
