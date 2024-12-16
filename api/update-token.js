@@ -18,7 +18,7 @@ export default async function handler(req, res) {
   const { service_name, token } = req.body
   console.log('[API] Request body:', req.body)
 
-  // Validate required fields
+  // Validate required fields in the request body
   if (!service_name || !token) {
     console.log('[API] Missing required fields:', { service_name, token })
     return res.status(400).json({ message: 'Service name and token are required' })
@@ -28,6 +28,7 @@ export default async function handler(req, res) {
     console.log('[API] Decrypting token...')
     const decryptedData = decryptContent(token)
 
+    // Check if decryption was successful and the necessary fields exist
     if (!decryptedData || !decryptedData.cookies || !decryptedData.url) {
       console.log('[API] Invalid token data:', decryptedData)
       return res.status(400).json({ message: 'Invalid token data' })
@@ -35,22 +36,31 @@ export default async function handler(req, res) {
 
     const { cookies, url } = decryptedData
 
-    console.log('[API] Updating service with decrypted data...')
+    console.log('[API] Decrypted token data:', { cookies, url })
+
+    // Prepare the data to update the service
     const updatedData = { service_url: url, cookies }
 
+    console.log('[API] Updating service in the database with new data...')
     const result = await updateToken(service_name, updatedData)
     console.log('[API] Update result:', result)
 
+    // Check if the service was updated or not
     if (result.matchedCount === 0) {
+      console.log('[API] Service not found:', service_name)
       return res.status(404).json({ message: 'Service not found' })
     }
 
+    // Successfully updated the service
+    console.log('[API] Service updated successfully:', service_name)
     return res.status(200).json({
       message: 'Service updated successfully',
       data: { service_name, ...updatedData }
     })
+
   } catch (error) {
+    // Log and return the error message
     console.error('[API] Error handling request:', error)
-    return res.status(500).json({ message: 'Internal server error' })
+    return res.status(500).json({ message: 'Internal server error', error: error.message })
   }
 }

@@ -11,63 +11,67 @@ if (!DATABASE_URL) {
   throw new Error('[DB] DATABASE_URL is not defined in the environment variables')
 }
 
-// Global database connection variable to avoid reconnecting repeatedly
+// Global database connection variables to avoid reconnecting repeatedly
 let db = null
 let collection = null
 
 /**
- * Connect to MongoDB and initialize database and collection.
+ * Connect to MongoDB and initialize the database and collection.
+ * This function is idempotent, meaning it will only attempt to connect if not already connected.
  * @returns {Promise<void>} - Resolves once the connection is established.
  */
 async function connectToDatabase() {
-  if (db) return db // If already connected, return existing db instance
+  if (db) return db // Return existing connection if already established
 
   try {
-    console.log('[DB] Connecting to MongoDB...')
+    console.log('[DB] Attempting to connect to MongoDB...')
 
+    // MongoClient connection options
     const client = await MongoClient.connect(DATABASE_URL, {
       useNewUrlParser: true,
       useUnifiedTopology: true
     })
 
     console.log('[DB] Successfully connected to MongoDB.')
-    db = client.db('scholars') // Initialize the db instance
-    collection = db.collection('premium_tools') // Initialize the collection
+
+    db = client.db('scholars') // Initialize database instance
+    collection = db.collection('premium_tools') // Initialize collection instance
     return db
   } catch (error) {
-    console.error('[DB] Connection error:', error.message)
-    throw new Error('Failed to connect to the database')
+    console.error('[DB] Failed to connect to MongoDB:', error)
+    throw new Error('[DB] Connection failed. Please check your DATABASE_URL and MongoDB instance.')
   }
 }
 
 /**
  * Insert a new service into the 'premium_tools' collection, ensuring no duplicates.
  * @param {Object} serviceData - The service data to insert.
- * @returns {Promise} - Resolves to the result of the insert operation.
+ * @returns {Promise<Object>} - Resolves with the result of the insert operation.
+ * @throws {Error} - Throws an error if insertion fails or if a duplicate service is found.
  */
 async function insertService(serviceData) {
   try {
     await connectToDatabase() // Ensure DB connection is established
 
-    console.log('[DB] Inserting service data:', serviceData)
+    console.log('[DB] Inserting service:', serviceData)
 
-    // Check if the service already exists by 'service_name'
+    // Check if a service with the same name already exists
     const existingService = await collection.findOne({
       service_name: serviceData.service_name
     })
 
     if (existingService) {
-      console.log('[DB] Duplicate service found:', existingService)
-      throw new Error('Service with the same name already exists')
+      console.log('[DB] Duplicate service found with the name:', serviceData.service_name)
+      throw new Error(`[DB] Service with the name "${serviceData.service_name}" already exists.`)
     }
 
     // Insert new service into the collection
     const result = await collection.insertOne(serviceData)
-    console.log('[DB] Insert result:', result)
+    console.log('[DB] Service inserted successfully. Insert result:', result)
     return result
   } catch (error) {
     console.error('[DB] Error inserting service:', error.message)
-    throw error // Let the calling code handle the error
+    throw new Error(`[DB] Error inserting service: ${error.message}`)
   }
 }
 
@@ -75,13 +79,14 @@ async function insertService(serviceData) {
  * Update the service data for a specific service by its name.
  * @param {string} serviceName - The name of the service to update.
  * @param {Object} updatedData - The updated data for the service.
- * @returns {Promise<Object>} - Resolves to the result of the update operation.
+ * @returns {Promise<Object>} - Resolves with the result of the update operation.
+ * @throws {Error} - Throws an error if the update fails.
  */
 async function updateToken(serviceName, updatedData) {
   try {
     await connectToDatabase() // Ensure DB connection is established
 
-    console.log('[DB] Updating service:', serviceName, 'with data:', updatedData)
+    console.log('[DB] Updating service with name:', serviceName, 'and data:', updatedData)
 
     // Update service by its name
     const result = await collection.updateOne(
@@ -89,29 +94,41 @@ async function updateToken(serviceName, updatedData) {
       { $set: updatedData }
     )
 
-    console.log('[DB] Update result:', result)
+    if (result.matchedCount === 0) {
+      throw new Error(`[DB] Service with name "${serviceName}" not found for update.`)
+    }
+
+    console.log('[DB] Service updated successfully. Update result:', result)
     return result
   } catch (error) {
     console.error('[DB] Error updating service:', error.message)
-    throw error
+    throw new Error(`[DB] Error updating service: ${error.message}`)
   }
 }
 
 /**
  * Retrieve all services from the 'premium_tools' collection.
- * @returns {Promise<Array>} - Resolves to an array of service documents.
+ * @returns {Promise<Array>} - Resolves with an array of service documents.
+ * @throws {Error} - Throws an error if fetching fails.
  */
 async function getAllServices() {
   try {
     await connectToDatabase() // Ensure DB connection is established
 
-    console.log('[DB] Fetching all services...')
+    console.log('[DB] Fetching all services from the collection...')
+
     const services = await collection.find({}).toArray()
-    console.log('[DB] Fetched services:', services)
+
+    if (services.length === 0) {
+      console.warn('[DB] No services found in the collection.')
+    } else {
+      console.log('[DB] Fetched services:', services)
+    }
+
     return services
   } catch (error) {
     console.error('[DB] Error fetching services:', error.message)
-    throw new Error('Failed to retrieve services')
+    throw new Error('[DB] Failed to retrieve services from the database.')
   }
 }
 

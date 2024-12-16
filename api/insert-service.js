@@ -1,5 +1,5 @@
-import {insertService} from './db.js';
-import {decryptContent} from './decrypt.js';
+import { insertService } from './db.js'
+import { decryptContent } from './decrypt.js'
 
 /**
  * Main function to handle the insertion of service data.
@@ -7,55 +7,70 @@ import {decryptContent} from './decrypt.js';
  * @param {import('@vercel/node').VercelResponse} res - The outgoing HTTP response.
  */
 export default async function handler(req, res) {
-    console.log('[API] Request method:', req.method);
+  console.log('[API] Received request:', {
+    method: req.method,
+    url: req.url,
+    headers: req.headers
+  })
 
-    if (req.method !== 'POST') {
-        console.log('[API] Method not allowed:', req.method);
-        return res.status(405).json({message: 'Only POST requests are allowed'});
+  // Ensure the request is a POST request
+  if (req.method !== 'POST') {
+    console.log('[API] Invalid request method:', req.method)
+    return res.status(405).json({ message: 'Only POST requests are allowed' })
+  }
+
+  // Extract service data from the request body
+  const { service_name, service_desc, token } = req.body
+  console.log('[API] Request body:', { service_name, service_desc, token })
+
+  // Validate required fields
+  if (!service_name || !service_desc || !token) {
+    console.error('[API] Missing required fields:', { service_name, service_desc, token })
+    return res.status(400).json({ message: 'Service name, description, and token are required' })
+  }
+
+  try {
+    console.log('[API] Decrypting token...')
+
+    // Decrypt the token to retrieve service data
+    const decryptedData = decryptContent(token)
+
+    // Validate the decrypted data
+    if (!decryptedData || !decryptedData.cookies || !decryptedData.url) {
+      console.error('[API] Invalid or incomplete decrypted data:', decryptedData)
+      return res.status(400).json({ message: 'Invalid or incomplete token data' })
     }
 
-    const {service_name, service_desc, token} = req.body;
-    console.log('[API] Request body:', req.body);
+    const { cookies, url } = decryptedData
 
-    if (!service_name || !service_desc || !token) {
-        console.log('[API] Missing required fields:', {service_name, service_desc, token});
-        return res.status(400).json({message: 'Service name, description, and token are required'});
+    // Prepare service data to be inserted into the database
+    const serviceData = {
+      service_name,
+      service_desc,
+      service_url: url,
+      cookies
     }
 
-    try {
-        console.log('[API] Decrypting token...');
-        const decryptedData = decryptContent(token);
+    console.log('[API] Service data prepared for insertion:', serviceData)
 
-        if (!decryptedData || !decryptedData.cookies || !decryptedData.url) {
-            console.log('[API] Invalid token data:', decryptedData);
-            return res.status(400).json({message: 'Invalid token data'});
-        }
+    // Insert the service into the database
+    const result = await insertService(serviceData)
+    console.log('[API] Service successfully inserted, result:', result)
 
-        const {cookies, url} = decryptedData;
-
-        const serviceData = {
-            service_name,
-            service_desc,
-            service_url: url,
-            cookies,
-        };
-
-        console.log('[API] Service data to insert:', serviceData);
-
-        const result = await insertService(serviceData);
-        console.log('[API] Insert result:', result);
-
-        return res.status(200).json({
-            message: 'Service inserted successfully',
-            data: {id: result.insertedId, ...serviceData},
-        });
-    } catch (error) {
-        if (error.message.includes('already exists')) {
-            console.error('[API] Duplicate error:', error);
-            return res.status(409).json({message: 'Service with the same name already exists'});
-        }
-
-        console.error('[API] Error handling request:', error);
-        return res.status(500).json({message: 'Internal server error'});
+    // Respond with success message and inserted service data
+    return res.status(200).json({
+      message: 'Service inserted successfully',
+      data: { id: result.insertedId, ...serviceData }
+    })
+  } catch (error) {
+    // Handle duplicate service name error
+    if (error.message.includes('already exists')) {
+      console.error('[API] Duplicate service error:', error)
+      return res.status(409).json({ message: 'Service with the same name already exists' })
     }
+
+    // Log any unexpected errors
+    console.error('[API] Error handling request:', error.message)
+    return res.status(500).json({ message: 'Internal server error', error: error.message })
+  }
 }
