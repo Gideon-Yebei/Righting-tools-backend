@@ -1,28 +1,40 @@
 import { MongoClient } from 'mongodb'
 import dotenv from 'dotenv'
 
+// Load environment variables from .env file
 dotenv.config()
 
-// Database connection string from `.env`
+// Ensure DATABASE_URL is defined in environment variables
 const { DATABASE_URL } = process.env
-
-// check if the connection string is defined
-if (!URL) {
-  throw new Error('[DB] URL is not defined in the environment variables')
+if (!DATABASE_URL) {
+  throw new Error('[DB] DATABASE_URL is not defined in the environment variables')
 }
 
+// Global database connection variable to avoid reconnecting repeatedly
+let db = null
+let collection = null
+
 /**
- * Connect to MongoDB and return the database instance.
- * @returns {Promise} - Resolves to the database instance.
+ * Connect to MongoDB and initialize database and collection.
+ * @returns {Promise<void>} - Resolves once the connection is established.
  */
 async function connectToDatabase() {
+  if (db) return db // If already connected, return existing db instance
+
   try {
-    console.log('[DB] Connecting to the database...')
-    const client = await MongoClient.connect(DATABASE_URL, { useNewUrlParser: true, useUnifiedTopology: true })
-    console.log('[DB] Successfully connected to the database.')
-    return client.db() // Returns the `scholars` database
+    console.log('[DB] Connecting to MongoDB...')
+
+    const client = await MongoClient.connect(DATABASE_URL, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    })
+
+    console.log('[DB] Successfully connected to MongoDB.')
+    db = client.db('scholars') // Initialize the db instance
+    collection = db.collection('premium_tools') // Initialize the collection
+    return db
   } catch (error) {
-    console.error('[DB] Database connection error:', error)
+    console.error('[DB] Connection error:', error.message)
     throw new Error('Failed to connect to the database')
   }
 }
@@ -33,40 +45,44 @@ async function connectToDatabase() {
  * @returns {Promise} - Resolves to the result of the insert operation.
  */
 async function insertService(serviceData) {
-  console.log('[DB] Inserting service data:', serviceData)
   try {
-    const db = await connectToDatabase()
-    const collection = db.collection('premium_tools')
+    await connectToDatabase() // Ensure DB connection is established
 
-    // Check for existing service with the same `service_name`
-    const existingService = await collection.findOne({ service_name: serviceData.service_name })
+    console.log('[DB] Inserting service data:', serviceData)
+
+    // Check if the service already exists by 'service_name'
+    const existingService = await collection.findOne({
+      service_name: serviceData.service_name
+    })
+
     if (existingService) {
       console.log('[DB] Duplicate service found:', existingService)
       throw new Error('Service with the same name already exists')
     }
 
-    // Insert the new service
+    // Insert new service into the collection
     const result = await collection.insertOne(serviceData)
     console.log('[DB] Insert result:', result)
     return result
   } catch (error) {
-    console.error('[DB] Error inserting service:', error)
+    console.error('[DB] Error inserting service:', error.message)
     throw error // Let the calling code handle the error
   }
 }
 
 /**
- * Update the service data for a specific service.
+ * Update the service data for a specific service by its name.
  * @param {string} serviceName - The name of the service to update.
- * @param {Object} updatedData - The data to update (e.g., service_url, cookies).
- * @returns {Promise<Object>} - Result of the update operation.
+ * @param {Object} updatedData - The updated data for the service.
+ * @returns {Promise<Object>} - Resolves to the result of the update operation.
  */
 async function updateToken(serviceName, updatedData) {
   try {
-    console.log('[DB] Updating service:', serviceName, 'with data:', updatedData)
-    const db = await connectToDatabase()
-    const collection = db.collection('premium_tools')
+    await connectToDatabase() // Ensure DB connection is established
 
+    console.log('[DB] Updating service:', serviceName, 'with data:', updatedData)
+
+    // Update service by its name
     const result = await collection.updateOne(
       { service_name: serviceName },
       { $set: updatedData }
@@ -75,7 +91,7 @@ async function updateToken(serviceName, updatedData) {
     console.log('[DB] Update result:', result)
     return result
   } catch (error) {
-    console.error('[DB] Error updating service:', error)
+    console.error('[DB] Error updating service:', error.message)
     throw error
   }
 }
@@ -86,13 +102,14 @@ async function updateToken(serviceName, updatedData) {
  */
 async function getAllServices() {
   try {
-    console.log('[DB] Fetching all services from the database...')
-    const db = await connectToDatabase()
-    const services = await db.collection('premium_tools').find({}).toArray() // Fetch all documents
+    await connectToDatabase() // Ensure DB connection is established
+
+    console.log('[DB] Fetching all services...')
+    const services = await collection.find({}).toArray()
     console.log('[DB] Fetched services:', services)
     return services
   } catch (error) {
-    console.error('[DB] Error fetching services:', error)
+    console.error('[DB] Error fetching services:', error.message)
     throw new Error('Failed to retrieve services')
   }
 }
