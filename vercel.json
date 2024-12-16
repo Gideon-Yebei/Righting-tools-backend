@@ -31,10 +31,6 @@
       "destination": "/api/home.js"
     },
     {
-      "source": "/api/hello",
-      "destination": "/api/hello.js"
-    },
-    {
       "source": "/api/insert-service",
       "destination": "/api/insert-service.js"
     },
