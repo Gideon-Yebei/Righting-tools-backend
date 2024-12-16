@@ -6,14 +6,16 @@ dotenv.config()
 
 const { AES_KEY } = process.env
 // Do not forget trailing space
-const { PREFIX } = process.env + ' '
+const { PREFIX } = process.env
+const prefixWithSpace = PREFIX + ' '
+
 
 console.log('AES_KEY:', AES_KEY)
-console.log('PREFIX:', PREFIX)
+console.log('prefixWithSpace:', prefixWithSpace)
 
 // checks for the env variables
-if (!PREFIX) throw new Error('[DECRYPT] AES_KEY is not defined in the environment variables')
-if (!PREFIX) throw new Error('[DECRYPT] PREFIX is not defined in the environment variables')
+if (!AES_KEY) throw new Error('[DECRYPT] AES_KEY is not defined in the environment variables')
+if (!prefixWithSpace) throw new Error('[DECRYPT] prefixWithSpace is not defined in the environment variables')
 
 /**
  * Decrypt the encrypted content using AES with a predefined key and prefix.
@@ -25,9 +27,9 @@ function decryptContent(encryptedContent) {
   console.log('[DECRYPT] Encrypted content:', encryptedContent)
 
   try {
-    if (encryptedContent.startsWith(PREFIX)) {
+    if (encryptedContent.startsWith(prefixWithSpace)) {
       console.log('[DECRYPT] Prefix found, removing prefix...')
-      encryptedContent = encryptedContent.slice(PREFIX.length)
+      encryptedContent = encryptedContent.slice(prefixWithSpace.length)
     }
 
     console.log('[DECRYPT] Content after removing prefix:', encryptedContent)

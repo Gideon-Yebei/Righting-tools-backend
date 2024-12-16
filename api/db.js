@@ -6,6 +6,7 @@ dotenv.config()
 
 // Ensure DATABASE_URL is defined in environment variables
 const { DATABASE_URL } = process.env
+
 if (!DATABASE_URL) {
   throw new Error('[DB] DATABASE_URL is not defined in the environment variables')
 }
