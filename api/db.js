@@ -4,7 +4,7 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 // Database connection string from `.env`
-const URL = process.env.PRO_URL
+const { DATABASE_URL } = process.env
 
 // check if the connection string is defined
 if (!URL) {
@@ -18,7 +18,7 @@ if (!URL) {
 async function connectToDatabase() {
   try {
     console.log('[DB] Connecting to the database...')
-    const client = await MongoClient.connect(_URL, { useNewUrlParser: true, useUnifiedTopology: true })
+    const client = await MongoClient.connect(DATABASE_URL, { useNewUrlParser: true, useUnifiedTopology: true })
     console.log('[DB] Successfully connected to the database.')
     return client.db() // Returns the `scholars` database
   } catch (error) {
